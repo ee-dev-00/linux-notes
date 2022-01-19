@@ -45,3 +45,44 @@ Pidstat is a little like top’s per-process summary, but prints a rolling summa
 
     07:41:02 PM   UID       PID    %usr %system  %guest    %CPU   CPU  Command
     07:41:03 PM     0         9    0.00    0.94    0.00    0.94     1  rcuos/0
+
+### iostat -xz 1
+
+This is a great tool for understanding block devices (disks), both the workload applied and the resulting performance. Look for:
+* r/s, w/s, rkB/s, wkB/s: These are the delivered reads, writes, read Kbytes, and write Kbytes per second to the device. Use these for workload characterization. A performance problem may simply be due to an excessive load applied.
+* await: The average time for the I/O in milliseconds. This is the time that the application suffers, as it includes both time queued and time being serviced. Larger than expected average times can be an indicator of device saturation, or device problems.
+* avgqu-sz: The average number of requests issued to the device. Values greater than 1 can be evidence of saturation (although devices can typically operate on requests in parallel, especially virtual devices which front multiple back-end disks.)
+* %util: Device utilization. This is really a busy percent, showing the time each second that the device was doing work. Values greater than 60% typically lead to poor performance (which should be seen in await), although it depends on the device. Values close to 100% usually indicate saturation.
+
+
+    $ iostat -xz 1
+    Linux 3.13.0-49-generic (titanclusters-xxxxx)  07/14/2015  _x86_64_ (32 CPU)
+
+    avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+    73.96    0.00    3.73    0.03    0.06   22.21
+
+    Device:   rrqm/s   wrqm/s     r/s     w/s    rkB/s    wkB/s avgrq-sz avgqu-sz   await r_await w_await  svctm  %util
+    xvda        0.00     0.23    0.21    0.18     4.52     2.08    34.37     0.00    9.98   13.80    5.42   2.44   0.09
+
+### sar -n DEV 1
+
+Use this tool to check network interface throughput: rxkB/s and txkB/s, as a measure of workload, and also to check if any limit has been reached. In the above example, eth0 receive is reaching 22 Mbytes/s, which is 176 Mbits/sec (well under, say, a 1 Gbit/sec limit).
+
+    $ sar -n DEV 1
+    Linux 3.13.0-49-generic (titanclusters-xxxxx)  07/14/2015     _x86_64_    (32 CPU)
+
+    12:16:48 AM     IFACE   rxpck/s   txpck/s    rxkB/s    txkB/s   rxcmp/s   txcmp/s  rxmcst/s   %ifutil
+    12:16:49 AM      eth0  18763.00   5032.00  20686.42    478.30      0.00      0.00      0.00      0.00
+
+### sar -n TCP,ETCP 1
+
+    $ sar -n TCP,ETCP 1
+    Linux 3.13.0-49-generic (titanclusters-xxxxx)  07/14/2015    _x86_64_    (32 CPU)
+
+    12:17:19 AM  active/s passive/s    iseg/s    oseg/s
+    12:17:20 AM      1.00      0.00  10233.00  18846.00
+
+This is a summarized view of some key TCP metrics. These include:
+* active/s: Number of locally-initiated TCP connections per second (e.g., via connect()).
+* passive/s: Number of remotely-initiated TCP connections per second (e.g., via accept()).
+* retrans/s: Number of TCP retransmits per second.
